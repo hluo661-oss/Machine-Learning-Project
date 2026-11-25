@@ -22,9 +22,14 @@ model_factory.py         # DINOv2-UNet / UNet / UNet++ / FPN / DeepLabV3+ / nnUN
 utils.py                 # seed, logger, device, metric weighting
 generate_predictions.py  # inference + submission JSON generation
 visualize_comparison.py  # qualitative comparison figure for multiple checkpoints
+method_manifest.json    # full experimental configuration and reported results
 requirements.txt
 README.md
 ```
+
+## Configuration
+
+Full experimental configuration, dataset statistics, environment and reported results are documented in [method_manifest.json](method_manifest.json).
 
 ## Installation
 
@@ -48,10 +53,20 @@ data/surgical_video/
 
 Labeled / unlabeled roots can be overridden with `--labeled-root`, `--external-val-root`, `--unlabeled-root`.
 
+Dataset files are not redistributed by this repository. Frames must be obtained from the original source and placed under `data/surgical_video/` following the layout above.
+
+## Results
+
+Reported on the held-out test set with the student best checkpoint, four-way flip TTA and the checkpoint-selected threshold.
+
+| DSC ↑ | HD ↓ | ASD ↓ |
+|---|---|---|
+| 0.817 | 42.05 | 7.08 |
+
 ## Train
 
 ```bash
-python train.py --arch dinov2_unet --epochs 150
+python train.py --arch dinov2_unet --epochs 150 --batch-size 8 --image-size 336 588
 ```
 
 Common options:
@@ -62,9 +77,13 @@ python train.py \
   --labeled-root ./data/surgical_video/train \
   --unlabeled-root ./data/surgical_video/unlabeled/images \
   --output-dir ./runs/semi_default \
+  --epochs 150 --batch-size 8 --unlabeled-batch-size 8 \
+  --image-size 336 588 \
+  --lr 2e-4 --encoder-lr 1e-5 --weight-decay 1e-5 \
+  --loss-type dice_focal --dice-loss-weight 0.7 --focal-loss-weight 0.3 \
   --freeze-dinov2-epochs 20 \
   --semi-warmup-epochs 20 --unsup-ramp-epochs 30 --unsup-weight 0.6 \
-  --ema-decay 0.99
+  --ema-decay 0.99 --pseudo-pos-thr 0.70 --pseudo-neg-thr 0.10 --pseudo-min-area 80
 ```
 
 Checkpoints, `history.csv`, `config.json` and `final_metrics.json` are saved under `--output-dir`. Best model is `checkpoints/bestmodel.pth`.
@@ -89,6 +108,8 @@ python visualize_comparison.py \
   --output ./figures/qualitative_comparison.png \
   --num-cases 4
 ```
+
+Case selection strategies: `--selection representative` (default, diverse quantiles), `improvement` (largest gain over baselines), `hard` (lowest Dice), `spread` (evenly spaced). Use `--overlay-mode error` to render true-positive / false-positive / false-negative regions instead of plain masks.
 
 ## Loss and metrics
 
