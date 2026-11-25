@@ -24,7 +24,6 @@
     "labeled_frames": 180,
     "foreground_labeled_frames": 118,
     "unlabeled_frames": 1379,
-    "test_frames": 48,
     "total_frames": 1559,
     "label_format": [
       "<VIDEO_ID>_<FRAMEID:06d>_label_bin.png",
