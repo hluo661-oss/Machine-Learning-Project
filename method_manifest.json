@@ -1,0 +1,86 @@
+{
+  "project": {
+    "name": "Surgical Video Segmentation with DINOv2-UNet",
+    "scope": "Semi-supervised 2D segmentation of surgical video frames under limited annotations, illumination variation and instrument occlusion.",
+    "method": "DINOv2 ViT encoder with lightweight CNN decoder, trained under a Semantic Mean Teacher framework with freeze-thaw adaptation and weak-to-strong consistency.",
+    "code_structure": {
+      "train.py": "semi-supervised training entrypoint (Mean Teacher, EMA teacher, freeze-thaw schedule)",
+      "dataset.py": "labeled / unlabeled datasets, mask parsing, weak and strong augmentation",
+      "model_factory.py": "DINOv2-UNet and baseline segmentation models, Dice + Focal loss",
+      "utils.py": "seeding, logging, device selection, metric quality weighting",
+      "generate_predictions.py": "inference and submission JSON generation",
+      "visualize_comparison.py": "qualitative comparison figure across checkpoints"
+    }
+  },
+  "environment": {
+    "python": "3.10.20",
+    "pytorch": "2.7.1+cu118",
+    "torchvision": "0.22.1+cu118",
+    "cuda_toolkit": "11.8",
+    "training_gpu": "NVIDIA GeForce RTX 4080 32 GB"
+  },
+  "dataset": {
+    "name": "Surgical video frame dataset",
+    "labeled_frames": 180,
+    "foreground_labeled_frames": 118,
+    "unlabeled_frames": 1379,
+    "test_frames": 48,
+    "total_frames": 1559,
+    "label_format": [
+      "<VIDEO_ID>_<FRAMEID:06d>_label_bin.png",
+      "<VIDEO_ID>_<FRAMEID:06d>_png_Label.tar (contains _Label.nii.gz)"
+    ],
+    "target_label": 10,
+    "input_resolution_hw": [336, 588],
+    "normalization": "ImageNet mean/std",
+    "train_val_split": "by video identity, 80% annotated frames for training and 20% for validation"
+  },
+  "model": {
+    "architecture": "DINOv2 ViT-L/14 encoder + lightweight CNN decoder",
+    "encoder": "DINOv2 ViT-L/14 (timm: vit_large_patch14_dinov2.lvd142m)",
+    "token_grid_hw": [24, 42],
+    "token_count": 1008,
+    "decoder": "1x1 channel projection to 256 + bilinear upsampling, concatenated with a shallow CNN texture stem, fused by a lightweight CNN decoder",
+    "fusion": "multi-level fusion of global ViT semantics and local CNN boundary detail"
+  },
+  "training": {
+    "epochs": 150,
+    "batch_size": 8,
+    "unlabeled_batch_size": 8,
+    "optimizer": "AdamW",
+    "encoder_lr": 0.00001,
+    "decoder_lr": 0.0002,
+    "weight_decay": 0.00001,
+    "lr_schedule": "linear warmup (5 epochs) followed by cosine annealing",
+    "loss": "0.7 * Dice + 0.3 * Focal (gamma=2.0, alpha=0.75)",
+    "unsupervised_loss": "BCE on high-confidence pseudo-labels (pos_thr=0.70, neg_thr=0.10, min_area=80)",
+    "mean_teacher": {
+      "ema_decay": 0.99,
+      "warmup_epochs": 20,
+      "unsupervised_weight": 0.6,
+      "ramp_epochs": 30
+    },
+    "freeze_thaw": "freeze DINOv2 encoder for 20 epochs, then unfreeze and fine-tune with encoder_lr",
+    "sampling": "foreground-balanced WeightedRandomSampler (power=0.5, weight range 0.5-4.0)",
+    "precision": "AMP mixed precision with gradient clipping at norm 1.0",
+    "early_stopping_patience": 40
+  },
+  "inference": {
+    "protocol": "student best checkpoint selected on validation score, four-way flip TTA, checkpoint-selected threshold, no morphological post-processing",
+    "threshold_search_range": [0.2, 0.65],
+    "evaluation_metrics": ["DSC", "HD", "ASD"]
+  },
+  "results": {
+    "paper_reported_evaluation": {
+      "dsc": 0.817,
+      "hd": 42.05,
+      "asd": 7.08
+    }
+  },
+  "notes": [
+    "Only 180 of 1559 frames carry pixel-level annotations, so unlabeled frames are exploited through pseudo-label supervision.",
+    "The DINOv2 encoder supplies large-scale self-supervised semantic priors, which stabilizes pseudo-label generation under severe occlusion.",
+    "Pseudo-label quality is guarded against collapse by minimum-area filtering and a minimum foreground-ratio check.",
+    "Dataset files are not redistributed by this repository; frames must be obtained from the original source and placed under data/surgical_video/."
+  ]
+}
