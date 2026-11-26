@@ -55,8 +55,12 @@ Labeled / unlabeled roots can be overridden with `--labeled-root`, `--external-v
 
 Dataset files are not redistributed by this repository. Frames must be obtained from the original source and placed under `data/surgical_video/` following the layout above.
 
-## Results
+## Dataset
 
+https://drive.usercontent.google.com/download?id=14WneBUBZ1X4p69tRdRzximNb0IsWuh2B&export=download&authuser=0
+
+## Results
+Link：
 Reported on the held-out test set with the student best checkpoint, four-way flip TTA and the checkpoint-selected threshold.
 
 | DSC ↑ | HD ↓ | ASD ↓ |
