@@ -28,6 +28,7 @@
     "label_format": [
       "<VIDEO_ID>_<FRAMEID:06d>_label_bin.png",
       "<VIDEO_ID>_<FRAMEID:06d>_png_Label.tar (contains _Label.nii.gz)"
+      "training_archive": "https://pan.quark.cn/s/5b0d8d5fb621"
     ],
     "target_label": 10,
     "input_resolution_hw": [336, 588],
